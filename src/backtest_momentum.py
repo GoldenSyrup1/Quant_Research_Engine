@@ -139,10 +139,12 @@ def _comparison(strategy_returns: pd.Series, benchmark_prices: pd.Series):
     benchmark_prices = benchmark_prices.sort_index().where(
         np.isfinite(benchmark_prices) & (benchmark_prices > 0)
     )
-    # Reindex closes before pct_change. A missing common-session close then makes
-    # both affected daily returns missing instead of creating a multi-day return.
-    aligned_closes = benchmark_prices.reindex(strategy_returns.index)
-    benchmark_returns = aligned_closes.pct_change(fill_method=None)
+    # Use the union calendar before pct_change. This retains the benchmark close
+    # immediately before strategy coverage while making a missing common-session
+    # close invalidate that date and the next close-to-close return.
+    comparison_calendar = benchmark_prices.index.union(strategy_returns.index).sort_values()
+    aligned_closes = benchmark_prices.reindex(comparison_calendar)
+    benchmark_returns = aligned_closes.pct_change(fill_method=None).reindex(strategy_returns.index)
     comparison = pd.concat(
         [strategy_returns.rename("strategy_net_return"), benchmark_returns.rename("benchmark_return")],
         axis=1,

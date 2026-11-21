@@ -118,13 +118,16 @@ class MetricsAndEvaluationTests(unittest.TestCase):
     def test_benchmark_comparison_uses_only_common_valid_dates(self):
         prices = synthetic_prices()
         benchmark = pd.Series(np.linspace(50, 80, len(prices)), index=prices.index, name="STW.AX")
-        missing_date = benchmark.index[200]
+        prior_date = prices.index[0] - pd.offsets.BDay(1)
+        benchmark.loc[prior_date] = benchmark.iloc[0] * 0.999
+        missing_date = prices.index[200]
         benchmark = benchmark.drop(missing_date)
         result = build_backtest(prices, benchmark)
         comparison = result.benchmark_comparison
         self.assertNotIn(missing_date, comparison.index)
-        self.assertNotIn(benchmark.index[benchmark.index.get_loc(missing_date) + 1]
-                         if missing_date in benchmark.index else prices.index[201], comparison.index)
+        self.assertNotIn(prices.index[201], comparison.index)
+        self.assertEqual(comparison.index[0], prices.index[0])
+        self.assertEqual(len(comparison), len(prices) - 2)
         self.assertEqual(result.benchmark_metrics["observations"], len(comparison))
         self.assertEqual(result.benchmark_metrics["comparison_start"], comparison.index[0].date().isoformat())
         self.assertEqual(result.benchmark_metrics["comparison_end"], comparison.index[-1].date().isoformat())
