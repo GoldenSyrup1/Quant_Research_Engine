@@ -20,6 +20,8 @@ Build a rigorous, educational and experimentally validated quantitative equity r
 - Distinguish gross returns from net returns.
 - Avoid fitting parameters to the testing period.
 - Use out-of-sample evaluation where feasible.
+- Define chronological train/test periods before reviewing results; never tune strategy choices on the held-out test period.
+- Keep deterministic implementation tests independent of network services and live data providers.
 - Compare strategies against appropriate benchmarks.
 - Report limitations and uncertainty.
 - Never fabricate data, results, tests or performance.
