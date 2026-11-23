@@ -58,6 +58,23 @@ was not inspected, changed, or used as evidence here.
 - [Candidate hypotheses](hypotheses/candidate_hypotheses.md)
 - [Source register](sources/source_register.md)
 
+## MICRO-002 follow-on assessment (24 November 2026)
+
+MICRO-002 preserves the MICRO-001 assessment and reaches a **CONDITIONAL GO**
+for the next, non-purchase step only: inspect a provider-supplied sample under
+its applicable terms and apply the documented acceptance test.  Cboe Australia's
+public Multicast PITCH sample is the leading route to test file/event semantics
+without a purchase, but it covers Cboe Australia only.  It is not evidence of a
+complete Australian-market dataset or of strategy feasibility.  Direct ASX and
+institutional vendor coverage remains subject to written specification, licence
+and quote confirmation.
+
+- [Vendor assessment](feasibility/MICRO-002_vendor_assessment.md)
+- [Sample-data requirements](feasibility/MICRO-002_sample_data_requirements.md)
+- [Cost assessment](feasibility/MICRO-002_cost_assessment.md)
+- [Source audit](feasibility/MICRO-002_source_audit.md)
+- [MICRO-002 source register](sources/MICRO-002_source_register.md)
+
 All external factual claims are tied to the source register.  “Unknown” means
 the review did not verify the fact from a public primary source; it is not a
 negative claim about the provider.
