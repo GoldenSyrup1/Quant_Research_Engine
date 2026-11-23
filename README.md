@@ -2,16 +2,48 @@
 
 An educational, research-first ASX momentum backtest. It has no live trading functionality. Results are exploratory and depend on the quality and historical coverage of the input data.
 
-## Setup and run
+## Setup
 
 ```bash
 python -m venv .venv
 # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-python src/download_data.py --tickers BHP.AX CBA.AX CSL.AX WES.AX WOW.AX MQG.AX FMG.AX TLS.AX --start 2015-01-01
-python src/backtest_momentum.py
 ```
+
+## Phase 2: reproducible research workflow
+
+Use a new experiment ID for every run. The engine refuses to overwrite an existing experiment directory.
+
+1. Download the universe and benchmark. This also writes `data/provenance.json`, recording the source, retrieval time, parameters, range, checksum, adjustment setting, and provider limitations for every successful download.
+
+   ```bash
+   python src/download_data.py --tickers BHP.AX CBA.AX CSL.AX WES.AX WOW.AX MQG.AX FMG.AX TLS.AX --start 2015-01-01
+   ```
+
+2. Audit the downloaded files. The audit is read-only: it reports rather than repairs missing data, suspect returns, duplicate or invalid dates, invalid prices, incomplete history, checksums, and reasonably detectable weekday gaps. Public holidays are included in the gap report because the audit does not have an exchange holiday calendar; review those dates before treating them as data problems.
+
+   ```bash
+   python src/data_audit.py --tickers BHP.AX CBA.AX CSL.AX WES.AX WOW.AX MQG.AX FMG.AX TLS.AX --benchmark STW.AX
+   ```
+
+   This writes `data/audit_report.json`.
+
+3. Run a named experiment. Its configuration fixes the existing strategy definition: 126-session lookback, 21-session skip, five equal-weight holdings, monthly rebalancing, next-session-close execution, and 10 bps per one-way turnover.
+
+   ```bash
+   python src/experiment.py --experiment-id asx-momentum-20261123 --tickers BHP.AX CBA.AX CSL.AX WES.AX WOW.AX MQG.AX FMG.AX TLS.AX --benchmark STW.AX
+   ```
+
+4. Find the complete run in `experiments/asx-momentum-20261123/`. It contains `configuration.json`, `data_audit.json`, gross and net curves and returns, weights, turnover, costs, metrics, benchmark comparison, and chronological train/test results.
+
+5. Reproduce a prior experiment with its recorded configuration and a new ID. The engine verifies every recorded input checksum and stops if any file changed.
+
+   ```bash
+   python src/experiment.py --config experiments/asx-momentum-20261123/configuration.json --experiment-id asx-momentum-20261123-reproduction
+   ```
+
+   The recorded `data_references` make this a same-input reproduction. Downloading refreshed provider data changes checksums, so it is a new data vintage rather than a reproduction of the earlier result.
 
 The downloader requests Yahoo Finance history with `auto_adjust=True`; `Close` is therefore the adjusted price series used for returns. It also requests `STW.AX`, the State Street SPDR S&P/ASX 200 ETF, as the broad-market comparison. STW seeks to track the S&P/ASX 200 index ([fund description](https://www.ssga.com/au/en_gb/individual/etfs/state-street-spdr-spasx-200-etf-stw)). Yahoo Finance retrieval is not guaranteed. If its file is absent, the backtest records that the benchmark is unavailable and does not substitute a proxy. The ETF benchmark starts only where its downloaded history is available; align comparisons over common dates before interpreting relative results.
 
@@ -39,6 +71,6 @@ The STW.AX comparison is computed only on dates where both the strategy net retu
 
 The loader rejects duplicate dates, non-positive or infinite prices, and malformed price files. Missing prices are not filled. A momentum score is eligible only when every close in its full 127-observation measurement window (126 intervals) is valid; insufficient or incomplete history produces no score. Missing returns for held assets stop the backtest rather than being treated as zero. Different start/end dates are retained, with the benchmark comparison restricted to actual overlapping valid daily observations. Yahoo Finance adjusted data and the selected current sample do not fix survivorship, delisting, ticker-history, or provider data-quality biases.
 
-Outputs in `outputs/` include gross and net daily returns, close-date weights, gross and net equity curves, `metrics.csv`, `transaction_cost_attribution.csv`, `out_of_sample_metrics.csv`, common-date benchmark comparison files, and `benchmark_status.txt`. Metrics include cumulative return, CAGR based on 252 sessions per year, annualised sample volatility, zero-risk-free-rate Sharpe, maximum drawdown, one-way turnover, and modeled transaction-cost drag. Risk-free interest on uninvested cash is assumed to be zero. Run deterministic offline tests with `python -m unittest discover -s tests -v`.
+The original `src/backtest_momentum.py` command remains available for exploratory use. Prefer `src/experiment.py` for research results because it preserves an audit and configuration with each output. Metrics include cumulative return, CAGR based on 252 sessions per year, annualised sample volatility, zero-risk-free-rate Sharpe, maximum drawdown, one-way turnover, and modeled transaction-cost drag. Risk-free interest on uninvested cash is assumed to be zero. Run deterministic offline tests with `python -m unittest discover -s tests -v`.
 
 Do not tune parameters against the evaluation period. Use point-in-time constituents, out-of-sample evaluation, data validation, and robustness checks before drawing conclusions. No financial transactions are made by this project.

@@ -22,6 +22,9 @@ Build a rigorous, educational and experimentally validated quantitative equity r
 - Use out-of-sample evaluation where feasible.
 - Define chronological train/test periods before reviewing results; never tune strategy choices on the held-out test period.
 - Keep deterministic implementation tests independent of network services and live data providers.
+- Preserve data provenance, file checksums, audit results, and immutable experiment configurations for every reported backtest.
+- Treat refreshed provider data as a new data vintage; do not describe a run as reproduced unless recorded input checksums match.
+- Report data anomalies for review. Do not silently interpolate, remove, or repair suspicious observations.
 - Compare strategies against appropriate benchmarks.
 - Report limitations and uncertainty.
 - Never fabricate data, results, tests or performance.
