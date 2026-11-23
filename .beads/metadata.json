@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "Quant_Research_Engine_v1",
+  "project_id": "31317f93-f453-4f89-bad2-f158ea389604"
+}
