@@ -1,0 +1,166 @@
+{
+  "downloads": [
+    {
+      "adjustments_and_limitations": "Yahoo Finance auto_adjust=True adjusted Close; provider data can change and does not remove survivorship, delisting, ticker-history, or data-quality limitations.",
+      "checksum_sha256": "41ab4d5c676a160107c53c77d25ac7e4b8f95c93ae73a4d3f792506b3d0f4bde",
+      "data_range": {
+        "end": "2026-11-23",
+        "start": "2015-01-02"
+      },
+      "download_parameters": {
+        "actions": false,
+        "auto_adjust": true,
+        "start": "2015-01-01"
+      },
+      "file": "BHP_AX.csv",
+      "observations": 3013,
+      "retrieved_at_utc": "2026-11-23T08:30:31.252943+00:00",
+      "source": "Yahoo Finance via yfinance",
+      "ticker": "BHP.AX"
+    },
+    {
+      "adjustments_and_limitations": "Yahoo Finance auto_adjust=True adjusted Close; provider data can change and does not remove survivorship, delisting, ticker-history, or data-quality limitations.",
+      "checksum_sha256": "5a9135ff12752b8302cb4e0d6c9857abb54db355a1fe27455c8f9ca361b05655",
+      "data_range": {
+        "end": "2026-11-23",
+        "start": "2015-01-02"
+      },
+      "download_parameters": {
+        "actions": false,
+        "auto_adjust": true,
+        "start": "2015-01-01"
+      },
+      "file": "CBA_AX.csv",
+      "observations": 3013,
+      "retrieved_at_utc": "2026-11-23T08:30:31.963362+00:00",
+      "source": "Yahoo Finance via yfinance",
+      "ticker": "CBA.AX"
+    },
+    {
+      "adjustments_and_limitations": "Yahoo Finance auto_adjust=True adjusted Close; provider data can change and does not remove survivorship, delisting, ticker-history, or data-quality limitations.",
+      "checksum_sha256": "fb65fb3495ea1e9afc2fd69e4d0372a3713ced589e027227094f307529d2d15d",
+      "data_range": {
+        "end": "2026-11-23",
+        "start": "2015-01-02"
+      },
+      "download_parameters": {
+        "actions": false,
+        "auto_adjust": true,
+        "start": "2015-01-01"
+      },
+      "file": "CSL_AX.csv",
+      "observations": 3013,
+      "retrieved_at_utc": "2026-11-23T08:30:32.695374+00:00",
+      "source": "Yahoo Finance via yfinance",
+      "ticker": "CSL.AX"
+    },
+    {
+      "adjustments_and_limitations": "Yahoo Finance auto_adjust=True adjusted Close; provider data can change and does not remove survivorship, delisting, ticker-history, or data-quality limitations.",
+      "checksum_sha256": "e8e997bd33580f6b810d27ce489d0e346a90f6c358bdcd5613fe0565dc4c4aa2",
+      "data_range": {
+        "end": "2026-11-23",
+        "start": "2015-01-02"
+      },
+      "download_parameters": {
+        "actions": false,
+        "auto_adjust": true,
+        "start": "2015-01-01"
+      },
+      "file": "WES_AX.csv",
+      "observations": 3013,
+      "retrieved_at_utc": "2026-11-23T08:30:33.414813+00:00",
+      "source": "Yahoo Finance via yfinance",
+      "ticker": "WES.AX"
+    },
+    {
+      "adjustments_and_limitations": "Yahoo Finance auto_adjust=True adjusted Close; provider data can change and does not remove survivorship, delisting, ticker-history, or data-quality limitations.",
+      "checksum_sha256": "70f663e99de4eb0eccbde11463ff30bbb8d304f795284e28f27e6b26a473a062",
+      "data_range": {
+        "end": "2026-11-23",
+        "start": "2015-01-02"
+      },
+      "download_parameters": {
+        "actions": false,
+        "auto_adjust": true,
+        "start": "2015-01-01"
+      },
+      "file": "WOW_AX.csv",
+      "observations": 3013,
+      "retrieved_at_utc": "2026-11-23T08:30:34.129682+00:00",
+      "source": "Yahoo Finance via yfinance",
+      "ticker": "WOW.AX"
+    },
+    {
+      "adjustments_and_limitations": "Yahoo Finance auto_adjust=True adjusted Close; provider data can change and does not remove survivorship, delisting, ticker-history, or data-quality limitations.",
+      "checksum_sha256": "16ed62b0155b69fcfd8a1da3f6720fe62d1d4ab1ace2e7df4f1703edbd6975ca",
+      "data_range": {
+        "end": "2026-11-23",
+        "start": "2015-01-02"
+      },
+      "download_parameters": {
+        "actions": false,
+        "auto_adjust": true,
+        "start": "2015-01-01"
+      },
+      "file": "MQG_AX.csv",
+      "observations": 3013,
+      "retrieved_at_utc": "2026-11-23T08:30:34.926861+00:00",
+      "source": "Yahoo Finance via yfinance",
+      "ticker": "MQG.AX"
+    },
+    {
+      "adjustments_and_limitations": "Yahoo Finance auto_adjust=True adjusted Close; provider data can change and does not remove survivorship, delisting, ticker-history, or data-quality limitations.",
+      "checksum_sha256": "299df74d40e7691b04fded0c32294cfeb9045602b26a09124f672ac1e4673676",
+      "data_range": {
+        "end": "2026-11-23",
+        "start": "2015-01-02"
+      },
+      "download_parameters": {
+        "actions": false,
+        "auto_adjust": true,
+        "start": "2015-01-01"
+      },
+      "file": "FMG_AX.csv",
+      "observations": 3013,
+      "retrieved_at_utc": "2026-11-23T08:30:37.403754+00:00",
+      "source": "Yahoo Finance via yfinance",
+      "ticker": "FMG.AX"
+    },
+    {
+      "adjustments_and_limitations": "Yahoo Finance auto_adjust=True adjusted Close; provider data can change and does not remove survivorship, delisting, ticker-history, or data-quality limitations.",
+      "checksum_sha256": "91db2404354bc8ce8e5030c7cda49b1dba4919dab4485224abcda4f42ed3b801",
+      "data_range": {
+        "end": "2026-11-23",
+        "start": "2015-01-02"
+      },
+      "download_parameters": {
+        "actions": false,
+        "auto_adjust": true,
+        "start": "2015-01-01"
+      },
+      "file": "TLS_AX.csv",
+      "observations": 3013,
+      "retrieved_at_utc": "2026-11-23T08:30:40.496668+00:00",
+      "source": "Yahoo Finance via yfinance",
+      "ticker": "TLS.AX"
+    },
+    {
+      "adjustments_and_limitations": "Yahoo Finance auto_adjust=True adjusted Close; provider data can change and does not remove survivorship, delisting, ticker-history, or data-quality limitations.",
+      "checksum_sha256": "eedb59a8f1f37fb9e223dcec33a0abb62a7d0454cebbc7f0f52464ba2148073a",
+      "data_range": {
+        "end": "2026-11-23",
+        "start": "2015-01-02"
+      },
+      "download_parameters": {
+        "actions": false,
+        "auto_adjust": true,
+        "start": "2015-01-01"
+      },
+      "file": "STW_AX.csv",
+      "observations": 3012,
+      "retrieved_at_utc": "2026-11-23T08:30:42.698709+00:00",
+      "source": "Yahoo Finance via yfinance",
+      "ticker": "STW.AX"
+    }
+  ]
+}
