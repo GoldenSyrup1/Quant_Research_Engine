@@ -1,0 +1,136 @@
+{
+  "calculation_settings": {
+    "bootstrap_block_length": 21,
+    "bootstrap_samples": 2000,
+    "bootstrap_seed": 20261123,
+    "calendar_periods": [
+      "2015-2018",
+      "2019-2022",
+      "2023-2026_partial"
+    ],
+    "cost_bps": [
+      10,
+      25,
+      50,
+      100
+    ],
+    "tail_n_values": [
+      1,
+      5,
+      10
+    ]
+  },
+  "configuration_checksum_sha256": "3618f9f7657ec2f7d7d3e30ee5826352af6a5e4497b16908f1c88db4b7faed35",
+  "generated_at_utc": "2026-11-23T09:27:59.756190+00:00",
+  "input_data_references": [
+    {
+      "checksum_sha256": "41ab4d5c676a160107c53c77d25ac7e4b8f95c93ae73a4d3f792506b3d0f4bde",
+      "end_date": "2026-11-23",
+      "file": "BHP_AX.csv",
+      "observations": 3013,
+      "role": "universe",
+      "start_date": "2015-01-02",
+      "ticker": "BHP.AX"
+    },
+    {
+      "checksum_sha256": "5a9135ff12752b8302cb4e0d6c9857abb54db355a1fe27455c8f9ca361b05655",
+      "end_date": "2026-11-23",
+      "file": "CBA_AX.csv",
+      "observations": 3013,
+      "role": "universe",
+      "start_date": "2015-01-02",
+      "ticker": "CBA.AX"
+    },
+    {
+      "checksum_sha256": "fb65fb3495ea1e9afc2fd69e4d0372a3713ced589e027227094f307529d2d15d",
+      "end_date": "2026-11-23",
+      "file": "CSL_AX.csv",
+      "observations": 3013,
+      "role": "universe",
+      "start_date": "2015-01-02",
+      "ticker": "CSL.AX"
+    },
+    {
+      "checksum_sha256": "e8e997bd33580f6b810d27ce489d0e346a90f6c358bdcd5613fe0565dc4c4aa2",
+      "end_date": "2026-11-23",
+      "file": "WES_AX.csv",
+      "observations": 3013,
+      "role": "universe",
+      "start_date": "2015-01-02",
+      "ticker": "WES.AX"
+    },
+    {
+      "checksum_sha256": "70f663e99de4eb0eccbde11463ff30bbb8d304f795284e28f27e6b26a473a062",
+      "end_date": "2026-11-23",
+      "file": "WOW_AX.csv",
+      "observations": 3013,
+      "role": "universe",
+      "start_date": "2015-01-02",
+      "ticker": "WOW.AX"
+    },
+    {
+      "checksum_sha256": "16ed62b0155b69fcfd8a1da3f6720fe62d1d4ab1ace2e7df4f1703edbd6975ca",
+      "end_date": "2026-11-23",
+      "file": "MQG_AX.csv",
+      "observations": 3013,
+      "role": "universe",
+      "start_date": "2015-01-02",
+      "ticker": "MQG.AX"
+    },
+    {
+      "checksum_sha256": "299df74d40e7691b04fded0c32294cfeb9045602b26a09124f672ac1e4673676",
+      "end_date": "2026-11-23",
+      "file": "FMG_AX.csv",
+      "observations": 3013,
+      "role": "universe",
+      "start_date": "2015-01-02",
+      "ticker": "FMG.AX"
+    },
+    {
+      "checksum_sha256": "91db2404354bc8ce8e5030c7cda49b1dba4919dab4485224abcda4f42ed3b801",
+      "end_date": "2026-11-23",
+      "file": "TLS_AX.csv",
+      "observations": 3013,
+      "role": "universe",
+      "start_date": "2015-01-02",
+      "ticker": "TLS.AX"
+    },
+    {
+      "checksum_sha256": "eedb59a8f1f37fb9e223dcec33a0abb62a7d0454cebbc7f0f52464ba2148073a",
+      "end_date": "2026-11-23",
+      "file": "STW_AX.csv",
+      "observations": 3012,
+      "role": "benchmark",
+      "start_date": "2015-01-02",
+      "ticker": "STW.AX"
+    }
+  ],
+  "output_checksums": {
+    "benchmark_metrics_recalculated.csv": "be34e8fb4f85e66395ee9d11e71e811d675b871c239dc117d283ed8482103626",
+    "bootstrap_paths.csv": "fb9ba619d098c097bfb514b68516e859160d738bc68f1108a585fc4c9f7016aa",
+    "bootstrap_summary.csv": "5c60f381e2012710aaf48765b41cc33c294ede74e63b163561af91f95df25da2",
+    "cost_sensitivity.csv": "40f44ceb414143f5b37f750fc9de4c8a3a8d7c152940dc9090a48de0bfa15e2a",
+    "cost_sensitivity_train_test.csv": "da761d1bbe40350d2937e838c0b9f149064a5135878c61112c91cf88d68b23bc",
+    "drawdown_duration.csv": "421ec3a6fcbaf5646437bc73ebf2b58ddac7a0e952d8d660519353a968070143",
+    "exposure_statistics.csv": "33e02043480f52cc5246ebacc2bcc3b824e9450919d44d56e06a4a89dfe46a2a",
+    "fixed_calendar_periods.csv": "3bd6a14492a78bb751e72e3bba568ab97ed49709035f0c119fbdd5e49e0009e0",
+    "leave_one_out.csv": "fa6cc1c8e4e2dbeee572d4d77642e4083e0dfcbed4a70e71f524dc47b1609308",
+    "tail_day_selected_dates.csv": "3faffd0bc5f7c99060b8a4e0966fe17823f6c926f41eb5ea4061867273b3d1c7",
+    "tail_day_sensitivity.csv": "ef135bdcf509bcb0db3f003094f9679e47fc97bcfab62d186bedff9b6b27704c",
+    "worst_daily_returns.csv": "07d1a29a7c6b4da48a01bd9bbfb1144a8e6896c5e5d89ac27f4b22111eaabaf0",
+    "worst_monthly_returns.csv": "8624cb22e070a27d4cac9bc91b923443e702d1c86e6a3847cc40df73408b03a4"
+  },
+  "software_versions": {
+    "numpy": "2.5.5",
+    "pandas": "3.1.1",
+    "python": "3.14.0"
+  },
+  "source_experiment": "experiments\\MOM-001",
+  "source_output_checksums": {
+    "benchmark_comparison.csv": "bb534c46ffa6bcbd56cce123204a95f6bde41c7e2dde2435c027c407be44782b",
+    "configuration.json": "3618f9f7657ec2f7d7d3e30ee5826352af6a5e4497b16908f1c88db4b7faed35",
+    "daily_returns.csv": "7eccbe6cbf2738ca38d0394aecd3c3956ed73b15e16727f4af144cd7fe5b0ed1",
+    "turnover.csv": "a5f8ae2a5ec68bcfe782badc143870710fdffb916ec212a22703846c5cdcb3f3",
+    "weights.csv": "8c8dbfc76c42645fbabd4383dd5741b246595674edbcf68ec8f0e77ff14d2f3a"
+  }
+}

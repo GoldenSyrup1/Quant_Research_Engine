@@ -1,0 +1,3 @@
+index,total_return,CAGR,annualised_volatility,Sharpe_ratio_rf_0,maximum_drawdown,one_way_turnover_cumulative,one_way_turnover_annualised,transaction_cost_cumulative_return_drag,observations
+strategy_net,6.2854489574179988,0.18087966868970917,0.16769487225964441,1.0755483268759909,-0.25148205223818476,0,0,0,3010
+benchmark,1.5087448321003598,0.080047532382965692,0.14578678573394896,0.60153434279756768,-0.34311793452507622,0,0,0,3010

@@ -4,6 +4,18 @@
 **Source:** immutable `experiments/MOM-001/` inputs and outputs  
 **Scope:** post-experiment sensitivity analysis only; MOM-001 was not modified or overwritten.
 
+## Reproduction
+
+Run the generator from the repository root:
+
+```bash
+python research/scripts/mom001_robustness_report.py
+```
+
+It verifies the nine configuration-recorded input checksums before reading data and writes deterministic CSV outputs to `research/results/MOM-001-robustness/`. The generated `manifest.json` records input and source-output checksums, calculation settings, output checksums, timestamp, and Python/NumPy/pandas versions. The CSV outputs are `cost_sensitivity.csv`, `cost_sensitivity_train_test.csv`, `leave_one_out.csv`, `fixed_calendar_periods.csv`, `drawdown_duration.csv`, `worst_daily_returns.csv`, `worst_monthly_returns.csv`, `exposure_statistics.csv`, `tail_day_sensitivity.csv`, `tail_day_selected_dates.csv`, `bootstrap_paths.csv`, `bootstrap_summary.csv`, and `benchmark_metrics_recalculated.csv`.
+
+The generator was run twice against unchanged MOM-001 inputs. All numerical CSV checksums matched between runs. The full offline test suite passed: **21 tests** via `python -m unittest discover -s tests -v`.
+
 ## Executive summary
 
 MOM-001's historical result remains positive under the tested 25, 50, and 100 bp one-way-turnover cost assumptions. It is nevertheless materially sensitive to the current selected universe and to the period examined. Removing FMG.AX produces the largest leave-one-out deterioration, and the 2023–2026 partial period is much weaker than 2019–2022.
@@ -61,6 +73,8 @@ Every leave-one-out result remains positive in this historical sample, but the v
 The arithmetic sum of daily gross-return contributions also places FMG.AX first at 0.7133, followed by CBA.AX at 0.3278 and BHP.AX at 0.2846. These are descriptive contributions, not compounded attribution, so they should not be added to infer terminal wealth.
 
 Stored-weight exposure was generally close to the five-name equal-weight intent: mean active holdings 4.72 including the initial cash formation period, mean largest weight 19.72%, 95th-percentile largest weight 22.19%, and maximum largest weight 25.82% after drift. Mean HHI was 0.189 and the 95th percentile was 0.201.
+
+The regenerated figures exactly match the earlier published exposure values. The new implementation defines active holdings as strictly positive risky weights, excludes cash from holding counts and HHI, uses actual stored post-close weights, and assigns zero HHI to cash-only formation rows. HHI is the sum of squared risky weights and is not normalized by risky exposure.
 
 ## 3. Period sensitivity
 

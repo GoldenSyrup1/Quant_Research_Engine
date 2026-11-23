@@ -61,6 +61,55 @@ def drawdown_duration(returns: pd.Series) -> dict:
     return {"longest_underwater_sessions": longest, "ends_underwater": bool(underwater.iloc[-1])}
 
 
+def exposure_statistics(weights: pd.DataFrame) -> dict:
+    """Summarize post-close risky weights; cash is excluded from all measures.
+
+    An active holding has a strictly positive finite risky weight. Cash-only rows
+    contribute zero active holdings, zero largest risky weight, and zero HHI.
+    HHI is the sum of squared risky weights (not normalized by risky exposure).
+    """
+    if weights.empty or weights.columns.has_duplicates or weights.index.has_duplicates:
+        raise ValueError("Weights must be non-empty with unique dates and tickers")
+    numeric = weights.apply(pd.to_numeric, errors="coerce")
+    if numeric.isna().any().any() or (~np.isfinite(numeric)).any().any() or (numeric < 0).any().any():
+        raise ValueError("Weights must be finite and non-negative")
+    active = numeric.gt(0).sum(axis=1)
+    largest = numeric.max(axis=1)
+    hhi = numeric.pow(2).sum(axis=1)
+    return {
+        "mean_active_holdings": float(active.mean()),
+        "mean_largest_risky_weight": float(largest.mean()),
+        "p95_largest_risky_weight": float(largest.quantile(0.95)),
+        "max_largest_risky_weight": float(largest.max()),
+        "mean_risky_hhi": float(hhi.mean()),
+        "p95_risky_hhi": float(hhi.quantile(0.95)),
+    }
+
+
+def tail_day_sensitivity(returns: pd.Series, n_values=(1, 5, 10)) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Set the top N daily returns to zero, resolving ties by earlier date first."""
+    series = pd.Series(returns, copy=True)
+    if series.empty or series.index.has_duplicates or series.isna().any() or (~np.isfinite(series)).any():
+        raise ValueError("Returns must be non-empty, finite, and have unique dates")
+    if any(not isinstance(n, int) or n < 1 or n > len(series) for n in n_values):
+        raise ValueError("Each n must be an integer between 1 and the number of returns")
+    ranked = series.reset_index().rename(columns={series.index.name or "index": "date", 0: "original_return"})
+    ranked.columns = ["date", "original_return"]
+    ranked = ranked.sort_values(["original_return", "date"], ascending=[False, True], kind="stable")
+    baseline = metrics_for_returns(series)
+    rows = [{"n": 0, "total_return": baseline["total_return"], "CAGR": baseline["CAGR"], "Sharpe": baseline["Sharpe_ratio_rf_0"]}]
+    selections = []
+    for n in n_values:
+        chosen = ranked.iloc[:n].copy()
+        altered = series.copy()
+        altered.loc[chosen["date"]] = 0.0
+        metrics = metrics_for_returns(altered)
+        rows.append({"n": n, "total_return": metrics["total_return"], "CAGR": metrics["CAGR"], "Sharpe": metrics["Sharpe_ratio_rf_0"]})
+        for rank, (_, item) in enumerate(chosen.iterrows(), start=1):
+            selections.append({"n": n, "rank": rank, "date": item["date"], "original_return": item["original_return"], "modified_return": 0.0})
+    return pd.DataFrame(rows).set_index("n"), pd.DataFrame(selections)
+
+
 def moving_block_bootstrap(
     returns: pd.Series, *, block_length: int = 21, samples: int = 2000, seed: int = 20261123
 ) -> pd.DataFrame:

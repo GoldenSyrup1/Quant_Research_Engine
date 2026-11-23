@@ -74,3 +74,13 @@ The loader rejects duplicate dates, non-positive or infinite prices, and malform
 The original `src/backtest_momentum.py` command remains available for exploratory use. Prefer `src/experiment.py` for research results because it preserves an audit and configuration with each output. Metrics include cumulative return, CAGR based on 252 sessions per year, annualised sample volatility, zero-risk-free-rate Sharpe, maximum drawdown, one-way turnover, and modeled transaction-cost drag. Risk-free interest on uninvested cash is assumed to be zero. Run deterministic offline tests with `python -m unittest discover -s tests -v`.
 
 Do not tune parameters against the evaluation period. Use point-in-time constituents, out-of-sample evaluation, data validation, and robustness checks before drawing conclusions. No financial transactions are made by this project.
+
+## Reproduce the MOM-001 robustness review
+
+With the committed MOM-001 inputs present, run:
+
+```bash
+python research/scripts/mom001_robustness_report.py
+```
+
+The generator verifies the configuration-recorded source-data checksums and writes deterministic tables plus `manifest.json` to `research/results/MOM-001-robustness/`. It never changes `experiments/MOM-001/`. The manifest records source/output checksums, calculation settings, software versions, and the generation time.
