@@ -14,8 +14,10 @@ The publicly offered Cboe Australia Multicast PITCH sample is a genuine,
 well-formed, single-day, single-matching-unit capture of the documented
 PITCH protocol. It parses byte-for-byte against the official specification
 with **zero malformed messages, zero sequence gaps, and zero order
-cross-references to an Order Id that was never added**, across 334,546
-sequenced messages. This is materially stronger evidence than "the vendor's
+cross-references to an Order Id that was never added**, across 334,856
+sequenced messages (corrected from an earlier transcription error of
+334,546 — see the [MICRO-003 closure audit](MICRO-003_closure_audit.md)
+§A). This is materially stronger evidence than "the vendor's
 marketing description matches the file": the message framing, field
 offsets and semantics in Cboe's specification were independently applied to
 the raw bytes and produced an internally consistent reconstruction.
@@ -93,8 +95,13 @@ series without first decoding the trade-type/designation flags (see §6).
   currently-advertised purchasable historical range, which is worth noting
   as a minor inconsistency rather than a defect.
 - **Sequencing:** 33,486 Sequenced Unit Headers, sequence numbers running
-  contiguously from 1 to 334,851 with **no gaps detected** when accounting
-  for each header's message count.
+  contiguously from 1 to 334,856 at the individual-message level (334,851
+  is the starting sequence number of the file's last Sequenced Unit
+  Header, which itself carries 6 further messages — corrected from an
+  earlier category error that reported the header-start range as if it
+  were the message-level range; see the
+  [MICRO-003 closure audit](MICRO-003_closure_audit.md) §A), with **no
+  gaps detected** when accounting for each header's message count.
 - **Instruments:** 58 distinct symbol codes observed (e.g. BHP, ANZ, FMG,
   A2M, CBTC, and others), consistent with a single matching unit covering a
   subset of CXA-traded securities, not the full ASX-equivalent universe.
