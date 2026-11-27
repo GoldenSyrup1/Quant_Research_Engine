@@ -1,0 +1,12 @@
+{
+  "portfolio_id": "LT-CASH",
+  "version": 1,
+  "created_at_utc": "2026-11-27T00:00:00+00:00",
+  "mandate": "long_term",
+  "starting_balance_aud": 50.0,
+  "restricted": false,
+  "target_allocation": [
+    {"instrument": "CASH", "weight": 1.0}
+  ],
+  "notes": "Cash benchmark for the three invested long-term shadow portfolios (PAPER-001). Held entirely as virtual cash; no buy transaction is ever placed against this configuration."
+}
