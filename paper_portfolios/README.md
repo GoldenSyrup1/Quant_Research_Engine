@@ -59,7 +59,14 @@ entered in a future, separately authorised step, they must be:
    - `source_reference` (a checksum or stable reference to the file/page
      the price came from), and
    - `transformations` (e.g. if a price was adjusted for a split before
-     being recorded here).
+     being recorded here), and
+   - `price_basis` (PAPER-002): `UNADJUSTED` (the default) if distributions
+     must be entered separately as `DistributionEvent`s, or
+     `ADJUSTED_TOTAL_RETURN` if the series already has distributions baked
+     in and none should be separately applied. `nav()`/`allocation()`
+     refuse to value an instrument that has both an applied distribution
+     and an `ADJUSTED_TOTAL_RETURN` observation (`AmbiguousPriceBasisError`)
+     — pick one approach per instrument, not both.
 2. Passed explicitly to `src.paper_trading.execution.simulate_market_fill`
    (for a simulated trade) or `src.paper_trading.metrics.nav` /
    `allocation` (for valuation) — there is no implicit "current price"

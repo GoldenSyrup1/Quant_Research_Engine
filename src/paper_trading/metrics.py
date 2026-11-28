@@ -3,6 +3,11 @@
 Reuses `src.metrics.max_drawdown` rather than reimplementing drawdown
 maths, consistent with this project's existing convention of one
 drawdown implementation shared across experiments.
+
+All valuation here is reconstructed purely from the transaction log as of
+a given timestamp (`lots_asof`/`holdings_asof`), never from the
+portfolio's live, current-day state -- a transaction recorded after
+`as_of` must never change a result computed as of an earlier date.
 """
 from __future__ import annotations
 
@@ -13,7 +18,16 @@ import numpy as np
 import pandas as pd
 
 from ..metrics import max_drawdown  # src/metrics.py, the existing project module
-from .ledger import PaperPortfolio, PriceObservation, PriceType, holdings_asof
+from .ledger import (
+    AmbiguousPriceBasisError,
+    PaperPortfolio,
+    PriceBasis,
+    PriceObservation,
+    PriceType,
+    distributed_instruments_asof,
+    holdings_asof,
+    lots_asof,
+)
 
 VALUATION_PRICE_PREFERENCE = (PriceType.CLOSE, PriceType.LAST, PriceType.NAV)
 
@@ -22,21 +36,43 @@ class MetricsError(Exception):
     pass
 
 
-def _valuation_price(observations: Sequence[PriceObservation], instrument: str, as_of: dt.datetime) -> Optional[float]:
-    """Pick the latest-available valuation price at/before `as_of`,
+def _select_valuation_observation(
+    observations: Sequence[PriceObservation], instrument: str, as_of: dt.datetime
+) -> Optional[PriceObservation]:
+    """Pick the latest-available valuation observation at/before `as_of`,
     preferring CLOSE, then LAST, then NAV. Bid/ask are deliberately never
     used for valuation (a one-sided quote is not a settled reference
     price)."""
-    best = None
     for price_type in VALUATION_PRICE_PREFERENCE:
         candidates = [
             o for o in observations
             if o.instrument == instrument and o.price_type is price_type and o.timestamp <= as_of
         ]
         if candidates:
-            best = max(candidates, key=lambda o: o.timestamp)
-            break
-    return best.price if best is not None else None
+            return max(candidates, key=lambda o: o.timestamp)
+    return None
+
+
+def _valuation_price(
+    portfolio: PaperPortfolio, observations: Sequence[PriceObservation], instrument: str, as_of: dt.datetime
+) -> Optional[float]:
+    """Resolves a valuation price for `instrument`, refusing to combine an
+    adjusted-total-return price with a separately applied cash
+    distribution for the same instrument (that would double-count the
+    distribution) -- see `PriceBasis`."""
+    observation = _select_valuation_observation(observations, instrument, as_of)
+    if observation is None:
+        return None
+    if observation.price_basis is PriceBasis.ADJUSTED_TOTAL_RETURN:
+        if instrument in distributed_instruments_asof(portfolio, as_of):
+            raise AmbiguousPriceBasisError(
+                f"Instrument {instrument} has both an applied cash distribution and an "
+                "adjusted-total-return valuation price as of this date; using both together "
+                "would double-count distributions. Use an unadjusted price plus the recorded "
+                "DistributionEvent, or an adjusted total-return price with no separate "
+                "distribution applied -- not both."
+            )
+    return observation.price
 
 
 def nav(portfolio: PaperPortfolio, price_observations: Sequence[PriceObservation], as_of: dt.datetime) -> float:
@@ -50,7 +86,7 @@ def nav(portfolio: PaperPortfolio, price_observations: Sequence[PriceObservation
     for instrument, units in snapshot["units"].items():
         if abs(units) < 1e-12:
             continue
-        price = _valuation_price(price_observations, instrument, as_of)
+        price = _valuation_price(portfolio, price_observations, instrument, as_of)
         if price is None:
             missing.append(instrument)
             continue
@@ -70,7 +106,7 @@ def holdings_value(portfolio: PaperPortfolio, price_observations: Sequence[Price
     for instrument, units in snapshot["units"].items():
         if abs(units) < 1e-12:
             continue
-        price = _valuation_price(price_observations, instrument, as_of)
+        price = _valuation_price(portfolio, price_observations, instrument, as_of)
         if price is None:
             raise MetricsError(f"No valuation price observation available for {instrument} at or before {as_of}")
         values[instrument] = units * price
@@ -94,9 +130,16 @@ def realised_pl(portfolio: PaperPortfolio) -> float:
 
 
 def unrealised_pl(portfolio: PaperPortfolio, price_observations: Sequence[PriceObservation], as_of: dt.datetime) -> float:
+    """Unrealised P&L using the units and average cost basis that
+    actually existed `as_of` -- reconstructed from the transaction log via
+    `lots_asof`, not the portfolio's live, current holdings. A transaction
+    recorded after `as_of` therefore has no effect on this result (PAPER-002
+    correctness fix)."""
     total = 0.0
-    for instrument, lot in portfolio.holdings.items():
-        price = _valuation_price(price_observations, instrument, as_of)
+    for instrument, lot in lots_asof(portfolio, as_of).items():
+        if abs(lot.units) < 1e-12:
+            continue
+        price = _valuation_price(portfolio, price_observations, instrument, as_of)
         if price is None:
             raise MetricsError(f"No valuation price observation available for {instrument} at or before {as_of}")
         total += lot.units * (price - lot.average_cost)

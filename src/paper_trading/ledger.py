@@ -23,6 +23,16 @@ class PriceType(enum.Enum):
     NAV = "nav"
 
 
+class PriceBasis(enum.Enum):
+    """Distinguishes an unadjusted price (distributions must be entered
+    separately as DistributionEvents) from an adjusted total-return price
+    (distributions are already embedded in the series and must NOT also be
+    applied as a separate cash event, or they would be counted twice)."""
+
+    UNADJUSTED = "unadjusted"
+    ADJUSTED_TOTAL_RETURN = "adjusted_total_return"
+
+
 class TransactionType(enum.Enum):
     DEPOSIT = "deposit"
     WITHDRAWAL = "withdrawal"
@@ -68,6 +78,17 @@ class UnknownDistributionError(PaperTradingError):
     pass
 
 
+class RecordDateMismatchError(PaperTradingError):
+    """Raised when an explicitly supplied record-date unit count disagrees
+    with what the transaction history itself reconstructs."""
+
+
+class AmbiguousPriceBasisError(PaperTradingError):
+    """Raised when an instrument has both an applied cash distribution and
+    an adjusted-total-return valuation price, which would double-count
+    distributions if both were used together."""
+
+
 @dataclass(frozen=True)
 class PriceObservation:
     """A single, provenanced price or distribution-input observation.
@@ -88,10 +109,15 @@ class PriceObservation:
     data_vintage: str
     source_reference: Optional[str] = None
     transformations: tuple = ()
+    price_basis: "PriceBasis" = PriceBasis.UNADJUSTED
 
     def __post_init__(self):
         if self.price <= 0 or not _finite(self.price):
             raise ValueError(f"Price observation for {self.instrument} must be a positive, finite number")
+        if not isinstance(self.timestamp, dt.datetime):
+            raise ValueError(f"Price observation for {self.instrument} has an invalid timestamp: {self.timestamp!r}")
+        if not isinstance(self.date, dt.date):
+            raise ValueError(f"Price observation for {self.instrument} has an invalid date: {self.date!r}")
 
 
 @dataclass(frozen=True)
@@ -109,6 +135,12 @@ class DistributionEvent:
     def __post_init__(self):
         if self.amount_per_unit <= 0 or not _finite(self.amount_per_unit):
             raise ValueError(f"Distribution amount for {self.event_id} must be a positive, finite number")
+        if not isinstance(self.record_date, dt.date) or not isinstance(self.pay_date, dt.date):
+            raise ValueError(f"Distribution {self.event_id} has an invalid record_date or pay_date")
+        if self.pay_date < self.record_date:
+            raise ValueError(
+                f"Distribution {self.event_id} has pay_date {self.pay_date} before record_date {self.record_date}"
+            )
 
 
 @dataclass(frozen=True)
@@ -125,6 +157,16 @@ class Fill:
     timestamp: dt.datetime
     source_reference: Optional[str] = None
     notes: str = ""
+
+    def __post_init__(self):
+        if self.quantity <= 0 or not _finite(self.quantity):
+            raise ValueError("Fill quantity must be a positive, finite number")
+        if self.fill_price <= 0 or not _finite(self.fill_price):
+            raise ValueError("Fill price must be a positive, finite number")
+        if self.fee < 0 or not _finite(self.fee):
+            raise ValueError("Fill fee must be a non-negative, finite number")
+        if not isinstance(self.timestamp, dt.datetime):
+            raise ValueError(f"Fill for {self.instrument} has an invalid timestamp: {self.timestamp!r}")
 
     @property
     def gross_value(self) -> float:
@@ -333,9 +375,30 @@ class PaperPortfolio:
     # -- distributions -------------------------------------------------------
 
     def apply_distribution(self, event: DistributionEvent, units_at_record_date: Optional[float] = None) -> Transaction:
+        """Credits cash at `amount_per_unit * units held at event.record_date`.
+
+        The record-date unit count is reconstructed from the transaction
+        history as of the end of `event.record_date` -- never from
+        whatever units happen to be held "now" (at the time this method is
+        called), which may already include trades made between the record
+        date and the payment date. If `units_at_record_date` is supplied
+        explicitly, it is validated against that reconstruction rather
+        than blindly trusted, so a caller cannot silently substitute a
+        different (e.g. current) holding count."""
         if event.event_id in self._applied_distribution_ids:
             raise DuplicateDistributionError(f"Distribution {event.event_id} already applied")
-        units = self.units_held(event.instrument) if units_at_record_date is None else units_at_record_date
+        record_date_end = dt.datetime.combine(event.record_date, dt.time.max)
+        reconstructed_units = units_asof(self, event.instrument, record_date_end)
+        if units_at_record_date is None:
+            units = reconstructed_units
+        else:
+            if abs(units_at_record_date - reconstructed_units) > 1e-9:
+                raise RecordDateMismatchError(
+                    f"Supplied units_at_record_date={units_at_record_date} for {event.instrument} "
+                    f"disagrees with the transaction history, which reconstructs "
+                    f"{reconstructed_units} units held as of {event.record_date}"
+                )
+            units = units_at_record_date
         amount = units * event.amount_per_unit
         self._applied_distribution_ids.add(event.event_id)
         if amount <= 0:
@@ -403,9 +466,22 @@ class PaperPortfolio:
 
     def adjust(self, reference_txn_id: str, cash_impact: float, timestamp: dt.datetime, note: str) -> Transaction:
         """Record a correction as a brand-new entry. The original
-        transaction is never edited or removed."""
+        transaction is never edited or removed.
+
+        Subject to the same restrictions as every other cash-moving
+        method: a restricted (e.g. protected-reserve) portfolio refuses
+        this too -- an adjustment is not a loophole for bypassing
+        RESERVE-CONTROL -- and no adjustment may push cash negative."""
+        self._require_unrestricted()
+        if not _finite(cash_impact):
+            raise ValueError("adjust() cash_impact must be a finite number")
         if not any(t.txn_id == reference_txn_id for t in self._transactions):
             raise ValueError(f"Unknown reference_txn_id {reference_txn_id}")
+        if self.cash + cash_impact < -1e-9:
+            raise InsufficientCashError(
+                f"Adjustment of {cash_impact} on portfolio {self.portfolio_id} would make cash negative "
+                f"(current cash {self.cash})"
+            )
         self.cash += cash_impact
         return self._append(
             txn_type=TransactionType.ADJUSTMENT,
@@ -431,9 +507,46 @@ class PaperPortfolio:
             return self.buy(fill, note=note or "manually confirmed limit buy")
         return self.sell(fill, note=note or "manually confirmed limit sell")
 
+    # -- reconstruction from a persisted transaction log ---------------------
+
+    @classmethod
+    def from_transactions(cls, portfolio_id: str, restricted: bool, transactions) -> "PaperPortfolio":
+        """Deterministically rebuild a PaperPortfolio purely by replaying
+        an already-validated, ordered sequence of `Transaction` records
+        (e.g. loaded from a persisted JSONL log). Does not re-run any of
+        buy()/sell()'s validation -- the transactions are trusted to have
+        already passed it when they were first recorded -- so this must
+        only ever be given transactions produced by this same ledger, not
+        arbitrary external data."""
+        portfolio = cls(portfolio_id, starting_balance=0.0, restricted=restricted)
+        portfolio._transactions = list(transactions)
+        portfolio._next_txn_seq = len(portfolio._transactions)
+        portfolio.cash = sum(t.cash_impact for t in portfolio._transactions)
+        far_future = dt.datetime.max
+        portfolio.holdings = _replay_lots(portfolio._transactions, far_future)
+        portfolio._applied_distribution_ids = {
+            t.reference_event_id
+            for t in portfolio._transactions
+            if t.txn_type is TransactionType.DISTRIBUTION and t.reference_event_id is not None
+        }
+        portfolio._reinvested_distribution_ids = {
+            t.reference_event_id
+            for t in portfolio._transactions
+            if t.txn_type is TransactionType.DISTRIBUTION_REINVEST and t.reference_event_id is not None
+        }
+        return portfolio
+
 
 def _epoch() -> dt.datetime:
     return dt.datetime(1970, 1, 1)
+
+
+def _chronological(transactions) -> list:
+    """Transactions sorted by (timestamp, append sequence). Reconstruction
+    must not assume transactions were appended in timestamp order -- a
+    distribution discovered after the fact and applied with an earlier
+    pay_date, for example, is a legitimate real-world case, not corruption."""
+    return sorted(transactions, key=lambda t: (t.timestamp, t.txn_id))
 
 
 def holdings_asof(portfolio: PaperPortfolio, as_of: dt.datetime) -> dict:
@@ -442,7 +555,7 @@ def holdings_asof(portfolio: PaperPortfolio, as_of: dt.datetime) -> dict:
     that point. Does not mutate `portfolio`."""
     cash = 0.0
     units: dict[str, float] = {}
-    for txn in portfolio.transactions:
+    for txn in _chronological(portfolio.transactions):
         if txn.timestamp > as_of:
             continue
         cash += txn.cash_impact
@@ -454,3 +567,58 @@ def holdings_asof(portfolio: PaperPortfolio, as_of: dt.datetime) -> dict:
             sign = -1.0 if txn.txn_type is TransactionType.SELL else 1.0
             units[txn.instrument] = units.get(txn.instrument, 0.0) + sign * txn.quantity
     return {"cash": cash, "units": units}
+
+
+def _replay_lots(transactions, as_of: dt.datetime) -> dict:
+    """Reuses the same average-cost algorithm as `PaperPortfolio.buy`/
+    `sell`: a BUY's cost added is `-cash_impact` (since cash_impact already
+    nets out gross value plus fee for a buy); a SELL reduces units only,
+    never the average cost of what remains."""
+    lots: dict[str, _Lot] = {}
+    for txn in _chronological(transactions):
+        if txn.timestamp > as_of or txn.instrument is None:
+            continue
+        if txn.txn_type is TransactionType.BUY:
+            lot = lots.get(txn.instrument, _Lot(units=0.0, average_cost=0.0))
+            cost_added = -txn.cash_impact
+            new_units = lot.units + txn.quantity
+            new_cost_basis = lot.units * lot.average_cost + cost_added
+            lots[txn.instrument] = _Lot(
+                units=new_units, average_cost=new_cost_basis / new_units if new_units else 0.0
+            )
+        elif txn.txn_type is TransactionType.SELL:
+            lot = lots.get(txn.instrument)
+            if lot is None:
+                continue  # should not happen in a consistent log; nothing to reduce
+            remaining = lot.units - txn.quantity
+            if remaining <= 1e-12:
+                lots.pop(txn.instrument, None)
+            else:
+                lots[txn.instrument] = _Lot(units=remaining, average_cost=lot.average_cost)
+    return lots
+
+
+def lots_asof(portfolio: PaperPortfolio, as_of: dt.datetime) -> dict:
+    """Reconstruct, purely from the immutable transaction log, each
+    instrument's units AND average cost basis exactly as they stood at
+    `as_of` -- not the portfolio's live, current-day state. This is what
+    historical unrealised-P&L and record-date distribution calculations
+    must use, so that a transaction recorded *after* `as_of` can never
+    change a result computed *as of* an earlier date."""
+    return _replay_lots(portfolio.transactions, as_of)
+
+
+def units_asof(portfolio: PaperPortfolio, instrument: str, as_of: dt.datetime) -> float:
+    lot = lots_asof(portfolio, as_of).get(instrument)
+    return lot.units if lot else 0.0
+
+
+def distributed_instruments_asof(portfolio: PaperPortfolio, as_of: dt.datetime) -> set:
+    """Instruments with at least one applied (non-zero or zero -- the
+    event having been *applied* is what matters, not its cash amount)
+    DISTRIBUTION transaction at or before `as_of`."""
+    return {
+        txn.instrument
+        for txn in portfolio.transactions
+        if txn.txn_type is TransactionType.DISTRIBUTION and txn.instrument is not None and txn.timestamp <= as_of
+    }

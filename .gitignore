@@ -6,3 +6,8 @@ outputs/
 .dolt/
 *.db
 .beads-credential-key
+
+# Personal paper-trading state (PAPER-002): local, per-user transaction
+# history and portfolio state. Never commit this -- it is not research
+# output, it is private simulated-account data.
+paper_state/

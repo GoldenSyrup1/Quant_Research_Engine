@@ -10,9 +10,11 @@ from src.paper_trading.ledger import (
     OrderSide,
     PaperPortfolio,
     PriceType,
+    RecordDateMismatchError,
     RestrictedPortfolioError,
     UnknownDistributionError,
     holdings_asof,
+    units_asof,
 )
 
 
@@ -211,6 +213,145 @@ class DeterministicReproductionTests(unittest.TestCase):
             [(t.txn_type, t.instrument, t.quantity, t.cash_impact, t.fee) for t in p1.transactions],
             [(t.txn_type, t.instrument, t.quantity, t.cash_impact, t.fee) for t in p2.transactions],
         )
+
+
+class DistributionRecordDateReconstructionTests(unittest.TestCase):
+    """PAPER-002 correctness fix: apply_distribution must use holdings as
+    they stood at record_date, not whatever is held at call time -- which
+    may already reflect trades made between the record date and the
+    payment date."""
+
+    def _event(self, event_id="D1", instrument="ABC", amount=0.10, record_date=dt.date(2026, 3, 1), pay_date=dt.date(2026, 3, 15)):
+        return DistributionEvent(
+            event_id=event_id,
+            instrument=instrument,
+            record_date=record_date,
+            pay_date=pay_date,
+            amount_per_unit=amount,
+            source="synthetic-fixture",
+            retrieved_at=dt.datetime.combine(pay_date, dt.time()),
+        )
+
+    def test_units_bought_after_record_date_are_excluded(self):
+        p = PaperPortfolio("TEST", starting_balance=1000.0)
+        p.buy(_fill("ABC", OrderSide.BUY, 10, 4.0, timestamp=dt.datetime(2026, 2, 1)))  # before record date
+        p.buy(_fill("ABC", OrderSide.BUY, 50, 4.0, timestamp=dt.datetime(2026, 3, 10)))  # after record, before pay
+        event = self._event(amount=0.10)
+        txn = p.apply_distribution(event)
+        # Only the 10 units held at record_date (2026-03-01) count, not the 60 held by pay_date.
+        self.assertAlmostEqual(txn.quantity, 10.0)
+        self.assertAlmostEqual(txn.cash_impact, 1.0)
+
+    def test_units_sold_after_record_date_do_not_reduce_the_distribution(self):
+        p = PaperPortfolio("TEST", starting_balance=1000.0)
+        p.buy(_fill("ABC", OrderSide.BUY, 20, 4.0, timestamp=dt.datetime(2026, 2, 1)))
+        p.sell(_fill("ABC", OrderSide.SELL, 15, 4.0, timestamp=dt.datetime(2026, 3, 10)))  # after record date
+        event = self._event(amount=0.10)
+        txn = p.apply_distribution(event)
+        # Record-date holding was still 20 units; the later sale must not reduce it.
+        self.assertAlmostEqual(txn.quantity, 20.0)
+
+    def test_explicit_units_matching_reconstruction_is_accepted(self):
+        p = PaperPortfolio("TEST", starting_balance=1000.0)
+        p.buy(_fill("ABC", OrderSide.BUY, 10, 4.0, timestamp=dt.datetime(2026, 2, 1)))
+        event = self._event(amount=0.10)
+        txn = p.apply_distribution(event, units_at_record_date=10.0)
+        self.assertAlmostEqual(txn.quantity, 10.0)
+
+    def test_explicit_units_disagreeing_with_history_is_rejected(self):
+        p = PaperPortfolio("TEST", starting_balance=1000.0)
+        p.buy(_fill("ABC", OrderSide.BUY, 10, 4.0, timestamp=dt.datetime(2026, 2, 1)))
+        event = self._event(amount=0.10)
+        with self.assertRaises(RecordDateMismatchError):
+            p.apply_distribution(event, units_at_record_date=999.0)
+
+    def test_no_units_held_at_record_date_gives_zero_impact_even_if_bought_later(self):
+        p = PaperPortfolio("TEST", starting_balance=1000.0)
+        p.buy(_fill("ABC", OrderSide.BUY, 10, 4.0, timestamp=dt.datetime(2026, 3, 10)))  # after record date
+        event = self._event(amount=0.10)
+        txn = p.apply_distribution(event)
+        self.assertAlmostEqual(txn.cash_impact, 0.0)
+        self.assertAlmostEqual(txn.quantity, 0.0)
+
+
+class HistoricalUnitsReconstructionTests(unittest.TestCase):
+    def test_units_asof_ignores_future_trades(self):
+        p = PaperPortfolio("TEST", starting_balance=1000.0)
+        p.buy(_fill("ABC", OrderSide.BUY, 10, 4.0, timestamp=dt.datetime(2026, 2, 1)))
+        p.buy(_fill("ABC", OrderSide.BUY, 10, 4.0, timestamp=dt.datetime(2026, 4, 1)))
+        self.assertAlmostEqual(units_asof(p, "ABC", dt.datetime(2026, 3, 1)), 10.0)
+        self.assertAlmostEqual(units_asof(p, "ABC", dt.datetime(2026, 5, 1)), 20.0)
+
+
+class RestrictedAdjustmentBypassTests(unittest.TestCase):
+    """PAPER-002 correctness fix: adjust() must not be a loophole around
+    RestrictedPortfolioError for RESERVE-CONTROL-style portfolios."""
+
+    def test_adjust_is_refused_on_a_restricted_portfolio(self):
+        p = PaperPortfolio("RESERVE-CONTROL", starting_balance=30.0, restricted=True)
+        deposit_txn = p.transactions[0]
+        with self.assertRaises(RestrictedPortfolioError):
+            p.adjust(deposit_txn.txn_id, cash_impact=-5.0, timestamp=dt.datetime(2026, 1, 2), note="attempted bypass")
+        self.assertAlmostEqual(p.cash, 30.0)
+
+    def test_adjust_cannot_make_cash_negative_even_on_an_unrestricted_portfolio(self):
+        p = PaperPortfolio("TEST", starting_balance=10.0)
+        deposit_txn = p.transactions[0]
+        with self.assertRaises(InsufficientCashError):
+            p.adjust(deposit_txn.txn_id, cash_impact=-20.0, timestamp=dt.datetime(2026, 1, 2), note="would go negative")
+        self.assertAlmostEqual(p.cash, 10.0)
+
+    def test_positive_adjustment_still_refused_on_restricted_portfolio(self):
+        # Even a cash-increasing "correction" is refused -- the rule is
+        # "no transaction-mutating pathway at all", not just "no losses".
+        p = PaperPortfolio("RESERVE-CONTROL", starting_balance=30.0, restricted=True)
+        deposit_txn = p.transactions[0]
+        with self.assertRaises(RestrictedPortfolioError):
+            p.adjust(deposit_txn.txn_id, cash_impact=5.0, timestamp=dt.datetime(2026, 1, 2), note="not allowed either")
+
+
+class InputValidationTests(unittest.TestCase):
+    def test_fill_rejects_non_positive_quantity(self):
+        with self.assertRaises(ValueError):
+            _fill("ABC", OrderSide.BUY, 0, 5.0)
+        with self.assertRaises(ValueError):
+            _fill("ABC", OrderSide.BUY, -1, 5.0)
+
+    def test_fill_rejects_non_positive_price(self):
+        with self.assertRaises(ValueError):
+            _fill("ABC", OrderSide.BUY, 1, 0.0)
+
+    def test_fill_rejects_negative_fee(self):
+        with self.assertRaises(ValueError):
+            _fill("ABC", OrderSide.BUY, 1, 5.0, fee=-0.01)
+
+    def test_fill_rejects_non_finite_quantity(self):
+        with self.assertRaises(ValueError):
+            _fill("ABC", OrderSide.BUY, float("nan"), 5.0)
+
+    def test_distribution_event_rejects_pay_date_before_record_date(self):
+        with self.assertRaises(ValueError):
+            DistributionEvent(
+                event_id="BAD",
+                instrument="ABC",
+                record_date=dt.date(2026, 3, 15),
+                pay_date=dt.date(2026, 3, 1),
+                amount_per_unit=0.1,
+                source="synthetic-fixture",
+                retrieved_at=dt.datetime(2026, 3, 15),
+            )
+
+    def test_distribution_event_rejects_non_positive_amount(self):
+        with self.assertRaises(ValueError):
+            DistributionEvent(
+                event_id="BAD2",
+                instrument="ABC",
+                record_date=dt.date(2026, 3, 1),
+                pay_date=dt.date(2026, 3, 15),
+                amount_per_unit=0.0,
+                source="synthetic-fixture",
+                retrieved_at=dt.datetime(2026, 3, 15),
+            )
 
 
 if __name__ == "__main__":
